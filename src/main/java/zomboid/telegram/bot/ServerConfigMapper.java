@@ -5,7 +5,7 @@ import lombok.NoArgsConstructor;
 
 @NoArgsConstructor
 @Data
-public class ConfigMapper {
+public class ServerConfigMapper {
 
     private Bot bot;
     private Server server;

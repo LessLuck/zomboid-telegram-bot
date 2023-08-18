@@ -5,9 +5,10 @@ import lombok.Getter;
 
 @Getter
 @AllArgsConstructor
-public enum UserList {
+// Change to read from the file
+public enum User {
     LessLuck(UserGroups.ADMIN),
     Vilkas(UserGroups.GM);
 
-    private final UserGroups groupLevel;
+    private final UserGroups userGroup;
 }
