@@ -18,8 +18,11 @@ import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import zomboid.telegram.bot.menus.PlayerMenu;
 import zomboid.telegram.bot.menus.StartMenu;
 import zomboid.telegram.bot.users.User;
+import zomboid.telegram.bot.users.UserMapper;
 
+import java.io.File;
 import java.io.IOException;
+import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -34,6 +37,8 @@ public class ZomboidBot extends TelegramLongPollingBot {
     private Integer updateOffset;
     private final ServerConfigMapper config;
     private static Rcon rcon;
+    private static final List<User> botUsers = UserMapper.getBotUsers();
+    private User currentUser;
     private final List<Session> sessions = new ArrayList<>();
     private final StartMenu startMenu = new StartMenu(this);
     private final PlayerMenu playerMenu = new PlayerMenu(this);
@@ -53,6 +58,7 @@ public class ZomboidBot extends TelegramLongPollingBot {
                         .build());
                 chatId = null;
                 currentSession = null;
+                currentUser = null;
 
                 // Capturing new messages and processing them
                 if (!updates.isEmpty()) {
@@ -62,6 +68,8 @@ public class ZomboidBot extends TelegramLongPollingBot {
             } catch (Exception e) {
                 var stackTrace = e.getStackTrace();
                 System.out.println(e.getMessage());
+                System.out.println(e.getCause()
+                        .toString());
                 Arrays.stream(stackTrace)
                         .forEach(stack -> System.out.println(stack.toString()));
                 System.out.println();
@@ -79,15 +87,20 @@ public class ZomboidBot extends TelegramLongPollingBot {
             var message_text = update.getMessage()
                     .getText();
 
-            try {
-                User.valueOf(update.getMessage()
-                        .getChat()
-                        .getUserName());
-            } catch (IllegalArgumentException e) {
+            currentUser = botUsers.stream()
+                    .filter(user -> user.username()
+                            .equals(update.getMessage()
+                                    .getChat()
+                                    .getUserName()))
+                    .findFirst()
+                    .orElse(null);
+
+            if (currentUser == null) {
                 var messageBuilder = SendMessage.builder()
                         .text("You're not authorized to use this bot")
                         .chatId(chatId);
                 execute(messageBuilder.build());
+                return;
             }
 
             currentSession = getSession(update);
@@ -114,7 +127,7 @@ public class ZomboidBot extends TelegramLongPollingBot {
                             Server have been recently restarted/started.
                             Wait a little bit until it finishes loading.
                             Check server logs if you think something is wrong with it.""");
-                    sendMessageWithKeyboard(messageBuilder.build(), new KeyboardRow());
+                    sendMessageWithMenuKeyboard(messageBuilder.build());
                     return;
                 } else if (serverStartTime.isBefore(LocalDateTime.now()
                         .minusMinutes(5))) {
@@ -225,9 +238,7 @@ public class ZomboidBot extends TelegramLongPollingBot {
         if (session.getChatId() == null) {
             session.setChatId(update.getMessage()
                             .getChatId())
-                    .setUser(User.valueOf(update.getMessage()
-                            .getChat()
-                            .getUserName()));
+                    .setUser(currentUser);
         }
         return session;
     }
@@ -298,6 +309,11 @@ public class ZomboidBot extends TelegramLongPollingBot {
     }
 
     @SneakyThrows
+    public void sendMessageWithMenuKeyboard(SendMessage message) {
+        sendMessageWithKeyboard(message, new KeyboardRow());
+    }
+
+    @SneakyThrows
     private void runCommand(Command command, Session session) {
         var messageBuilder = SendMessage.builder()
                 .chatId(chatId);
@@ -305,7 +321,7 @@ public class ZomboidBot extends TelegramLongPollingBot {
         // If command level higher than user -> throw back to main menu
         if (command.getUserGroup() == null || command.getUserGroup()
                 .getGroupLevel() < session.getUser()
-                .getUserGroup()
+                .userGroup()
                 .getGroupLevel()) {
             messageBuilder.text("You're not allowed to execute this command");
             execute(messageBuilder.build());
@@ -323,42 +339,61 @@ public class ZomboidBot extends TelegramLongPollingBot {
             case KICK -> playerMenu.kickPlayer(currentSession.getSavedValue());
             case BAN_USER -> playerMenu.banPlayer(currentSession.getSavedValue());
             case START -> {
-                if (runBashCommand("./pzserver start")) {
-                    serverStartTime = LocalDateTime.now();
-                    messageBuilder.text("Server have been successfully started, wait a bit for it to load");
-                    sendMessageWithKeyboard(messageBuilder.build(), new KeyboardRow());
-                } else {
-                    messageBuilder.text("Server failed to start, see above message for details");
-                    sendMessageWithKeyboard(messageBuilder.build(), new KeyboardRow());
+                if (checkBashAvailable())
+                    if (runBashCommand("./pzserver start")) {
+                        serverStartTime = LocalDateTime.now();
+                        messageBuilder.text("Server have been successfully started, wait a bit for it to load");
+                        sendMessageWithMenuKeyboard(messageBuilder.build());
+                    } else {
+                        messageBuilder.text("Server failed to start, see above message for details");
+                        sendMessageWithMenuKeyboard(messageBuilder.build());
+                    }
+                else {
+                    messageBuilder.text("Cannot locate LinuxGSM's pzserver file," +
+                            " starting/stopping server is not possible");
+                    sendMessageWithMenuKeyboard(messageBuilder.build());
                 }
             }
             case RESTART -> {
-                if (runBashCommand("./pzserver restart")) {
-                    serverStartTime = LocalDateTime.now();
-                    messageBuilder.text("Server has been successfully restarted, wait a bit for it to load");
-                    sendMessageWithKeyboard(messageBuilder.build(), new KeyboardRow());
-                    rcon.close();
-                    rcon = null;
-                } else {
-                    messageBuilder.text("Server failed to restart, see above message for details");
-                    sendMessageWithKeyboard(messageBuilder.build(), new KeyboardRow());
+                if (checkBashAvailable())
+                    if (runBashCommand("./pzserver restart")) {
+                        serverStartTime = LocalDateTime.now();
+                        messageBuilder.text("Server has been successfully restarted, wait a bit for it to load");
+                        sendMessageWithMenuKeyboard(messageBuilder.build());
+                        rcon.close();
+                        rcon = null;
+                    } else {
+                        messageBuilder.text("Server failed to restart, see above message for details");
+                        sendMessageWithMenuKeyboard(messageBuilder.build());
+                    }
+                else {
+                    messageBuilder.text("Cannot locate LinuxGSM's pzserver file," +
+                            " starting/stopping server is not possible");
+                    sendMessageWithMenuKeyboard(messageBuilder.build());
                 }
             }
             case STOP -> {
-                if (runBashCommand("./pzserver stop")) {
-                    serverStartTime = LocalDateTime.now();
-                    messageBuilder.text("Server has been successfully stopped");
-                    getStartServerButton(messageBuilder);
-                    rcon.close();
-                    rcon = null;
-                } else {
-                    messageBuilder.text("Server failed to stop, see above message for details");
+                if (checkBashAvailable())
+                    if (runBashCommand("./pzserver stop")) {
+                        serverStartTime = LocalDateTime.now();
+                        messageBuilder.text("Server has been successfully stopped");
+                        getStartServerButton(messageBuilder);
+                        rcon.close();
+                        rcon = null;
+                    } else {
+                        messageBuilder.text("Server failed to stop, see above message for details");
+                        sendMessageWithMenuKeyboard(messageBuilder.build());
+                    }
+                else {
+                    messageBuilder.text("Cannot locate LinuxGSM's pzserver file," +
+                            " starting/stopping server is not possible");
+                    sendMessageWithMenuKeyboard(messageBuilder.build());
                 }
             }
             default -> {
                 messageBuilder.text("Command %s is not possible to execute".formatted(command))
                         .chatId(session.getChatId());
-                execute(messageBuilder.build());
+                sendMessageWithMenuKeyboard(messageBuilder.build());
             }
         }
     }
@@ -370,7 +405,6 @@ public class ZomboidBot extends TelegramLongPollingBot {
         // env var TMUX/STY should be null, else LinuxGSM throws exception if bot launched from screen/tmux session
         env.put("TMUX", "");
         env.put("STY", "");
-        System.out.println(processBuilder.command());
         var process = processBuilder.start();
         var messageBuilder = SendMessage.builder()
                 .chatId(chatId);
@@ -414,6 +448,17 @@ public class ZomboidBot extends TelegramLongPollingBot {
             execute(messageBuilder.build());
         }
         return isContextSame;
+    }
+
+    @SneakyThrows
+    public boolean checkBashAvailable() {
+        return Path.of(new File(Main.class.getProtectionDomain()
+                        .getCodeSource()
+                        .getLocation()
+                        .toURI()).getParentFile()
+                        .getPath(), "pzserver")
+                .toFile()
+                .exists();
     }
 
     @Override

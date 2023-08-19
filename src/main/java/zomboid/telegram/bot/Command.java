@@ -15,13 +15,13 @@ public enum Command {
     RESTART(UserGroups.ADMIN, "Restart", null),
     STOP(UserGroups.ADMIN, "Stop", null),
     SERVER_MESSAGE(UserGroups.ADMIN, "Server message", null),
-    TELEPORT(UserGroups.ADMIN, "Teleport", Context.PLAYER),
     EXECUTE(UserGroups.ADMIN, "Execute", null),
-    BAN_USER(UserGroups.GM, "Ban user", Context.PLAYER),
-    SAVE(UserGroups.GM, "Save", null),
-    KICK(UserGroups.GM, "Kick", null),
-    PLAYERS(UserGroups.GM, "Players", null),
-    MENU(UserGroups.GM, "Back to menu", null);
+    SAVE(UserGroups.ADMIN, "Save", null),
+    BAN_USER(UserGroups.MOD, "Ban user", Context.PLAYER),
+    TELEPORT(UserGroups.MOD, "Teleport", Context.PLAYER),
+    KICK(UserGroups.MOD, "Kick", null),
+    PLAYERS(UserGroups.MOD, "Players", null),
+    MENU(UserGroups.MOD, "Back to menu", null);
 
     private final UserGroups userGroup;
     private final String chatCommand;
