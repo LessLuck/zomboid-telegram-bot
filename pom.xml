@@ -6,7 +6,7 @@
 
     <groupId>zd.tel.bot</groupId>
     <artifactId>zomboid-telegram-bot</artifactId>
-    <version>0.2-alpha</version>
+    <version>0.3</version>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>

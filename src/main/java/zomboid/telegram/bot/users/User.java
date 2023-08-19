@@ -8,7 +8,7 @@ import lombok.Getter;
 // Change to read from the file
 public enum User {
     LessLuck(UserGroups.ADMIN),
-    Vilkas(UserGroups.GM);
+    LessLuckTest(UserGroups.GM);
 
     private final UserGroups userGroup;
 }

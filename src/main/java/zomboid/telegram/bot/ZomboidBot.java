@@ -2,22 +2,26 @@ package zomboid.telegram.bot;
 
 import lombok.SneakyThrows;
 import nl.vv32.rcon.Rcon;
+import org.apache.commons.lang3.RegExUtils;
 import org.springframework.lang.Nullable;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
 import org.telegram.telegrambots.meta.api.methods.updates.GetUpdates;
+import org.telegram.telegrambots.meta.api.methods.updatingmessages.EditMessageText;
 import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboard;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardMarkup;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardRemove;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardButton;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow;
+import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import zomboid.telegram.bot.menus.PlayerMenu;
 import zomboid.telegram.bot.menus.StartMenu;
 import zomboid.telegram.bot.users.User;
 
 import java.io.IOException;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -26,6 +30,7 @@ public class ZomboidBot extends TelegramLongPollingBot {
 
     public Long chatId;
     public Session currentSession;
+    private LocalDateTime serverStartTime = null;
     private Integer updateOffset;
     private final ServerConfigMapper config;
     private static Rcon rcon;
@@ -90,12 +95,47 @@ public class ZomboidBot extends TelegramLongPollingBot {
             var messageBuilder = SendMessage.builder()
                     .chatId(chatId);
 
-            var isRconOpened = openRcon(chatId);
-            if (!isRconOpened)
-                return;
-
             // if command is not from the available list - check current context
             var command = Command.get(message_text);
+
+            boolean isRconOpened = false;
+            try {
+                if (rcon != null) {
+                    isRconOpened = rcon.authenticate(config.getServer()
+                            .getRconPassword());
+                } else
+                    isRconOpened = openRcon();
+            }
+            // If command is not start and can't connect to server - send message that server is offline
+            catch (IOException e) {
+                if (serverStartTime.isAfter(LocalDateTime.now()
+                        .minusMinutes(5))) {
+                    messageBuilder.text("""
+                            Server have been recently restarted/started.
+                            Wait a little bit until it finishes loading.
+                            Check server logs if you think something is wrong with it.""");
+                    sendMessageWithKeyboard(messageBuilder.build(), new KeyboardRow());
+                    return;
+                } else if (serverStartTime.isBefore(LocalDateTime.now()
+                        .minusMinutes(5))) {
+                    messageBuilder.text("""
+                            Server have been restarted/started %s minutes ago and still haven't loaded.
+                            Check server logs to see what went wrong."""
+                            .formatted(ChronoUnit.MINUTES.between(serverStartTime, LocalDateTime.now())));
+                    sendMessageRemoveKeyboard(messageBuilder.build());
+                    serverStartTime = null;
+                    return;
+                }
+                if (command != Command.START) {
+                    messageBuilder.text("Server is currently offline");
+                    getStartServerButton(messageBuilder);
+                    return;
+                }
+            }
+
+            if (!isRconOpened && command != Command.START) {
+                return;
+            }
 
             if (command == Command.MENU) {
                 new StartMenu(this).getStartMenu();
@@ -155,147 +195,23 @@ public class ZomboidBot extends TelegramLongPollingBot {
         new StartMenu(this).getStartMenu();
     }
 
-    @SneakyThrows
-    private boolean openRcon(Long chatId) {
+    private Boolean openRcon() throws IOException, TelegramApiException {
         // trying to open RCON connection
         var messageBuilder = SendMessage.builder();
         messageBuilder.chatId(chatId);
 
-        try {
-            if (rcon == null) {
-                rcon = Rcon.open(config.getServer()
-                        .getHostname(), config.getServer()
-                        .getRconPort());
+        rcon = Rcon.open(config.getServer()
+                .getHostname(), config.getServer()
+                .getRconPort());
 
-                if (rcon.authenticate(config.getServer()
-                        .getRconPassword())) {
-                    return true;
-                } else {
-                    messageBuilder.text("Failed to authenticate");
-                    var replyKeyboard = ReplyKeyboardMarkup.builder()
-                            .keyboard(List.of(new KeyboardRow(List.of(new KeyboardButton("/start")))))
-                            .oneTimeKeyboard(true)
-                            .build();
-                    messageBuilder.replyMarkup(replyKeyboard);
-                    execute(messageBuilder.build());
-                    return false;
-                }
-            }
-        } catch (IOException e) {
-            messageBuilder.text("Server is currently offline");
-            var replyKeyboard = ReplyKeyboardMarkup.builder()
-                    .keyboard(List.of(new KeyboardRow(List.of(new KeyboardButton("START THE SERVER")))))
-                    .oneTimeKeyboard(true)
-                    .build();
-            messageBuilder.replyMarkup(replyKeyboard);
-            execute(messageBuilder.build());
+        if (rcon.authenticate(config.getServer()
+                .getRconPassword())) {
+            return true;
+        } else {
+            messageBuilder.text("Failed to authenticate");
+            getStartServerButton(messageBuilder);
             return false;
         }
-        return true;
-    }
-
-    @SneakyThrows
-    private void runCommand(Command command, Session session) {
-        var messageBuilder = SendMessage.builder();
-
-        // If command level higher than user -> send message
-        if (command.getUserGroup() == null || command.getUserGroup()
-                .getGroupLevel() < session.getUser()
-                .getUserGroup()
-                .getGroupLevel()) {
-            messageBuilder.text("You're not allowed to execute this command")
-                    .chatId(session.getChatId());
-            execute(messageBuilder.build());
-            runCommand(session.getContextCommand(), session);
-            return;
-        }
-
-        switch (command) {
-            case PLAYERS -> startMenu.getPlayers();
-            case SERVER_MESSAGE -> startMenu.getServerMessageForm();
-            case KICK -> playerMenu.kickPlayer(currentSession.getSavedValue());
-            case BAN_USER -> playerMenu.banPlayer(currentSession.getSavedValue());
-
-
-//            case RESTART: {
-//                // TODO Add server restart
-//                messageBuilder.text("Server is starting...");
-//                Thread.sleep(Duration.ofSeconds(60));
-//                var replyKeyboard = new ReplyKeyboardMarkup();
-//                replyKeyboard.setKeyboard(ChatMenus.START_MENU.getReplyKeyboard());
-//                messageBuilder.replyMarkup(replyKeyboard);
-//                messageBuilder.text("Pick a command from the list")
-//                        .chatId(session.getChatId());
-//                execute(messageBuilder.build());
-//            break;
-//            }
-
-//            case ONLINE: {
-//                // TODO Add server start
-//                messageBuilder.text("Server is starting...");
-//                Thread.sleep(Duration.ofSeconds(60));
-//                var replyKeyboard = new ReplyKeyboardMarkup();
-//                replyKeyboard.setKeyboard(ChatMenus.START_MENU.getReplyKeyboard());
-//                messageBuilder.replyMarkup(replyKeyboard);
-//                messageBuilder.text("Pick a command from the list")
-//                        .chatId(session.getChatId());
-//                execute(messageBuilder.build());
-//            break;
-//            }
-//
-//            case OFFLINE: {
-//                // TODO Add server stop
-//                var replyKeyboard = new ReplyKeyboardMarkup();
-//                replyKeyboard.setKeyboard(List.of(new KeyboardRow(
-//                        List.of(new KeyboardButton("1"), new KeyboardButton("2"), new KeyboardButton("3")))));
-//                messageBuilder.replyMarkup(replyKeyboard);
-//                messageBuilder.text("Pick a command from the list")
-//                        .chatId(session.getChatId());
-//                execute(messageBuilder.build());
-//            break;
-//            }
-            default -> {
-                messageBuilder.text("Command %s is not possible to execute".formatted(command))
-                        .chatId(session.getChatId());
-                execute(messageBuilder.build());
-            }
-        }
-    }
-
-    @SneakyThrows
-    public Boolean checkContext(Context expectedContext) {
-        var isContextSame = !(currentSession.getContext() == null || !currentSession.getContext()
-                .equals(expectedContext));
-        if (!isContextSame) {
-            var messageBuilder = SendMessage.builder();
-            messageBuilder.text("Context did not match");
-            messageBuilder.chatId(chatId);
-            execute(messageBuilder.build());
-        }
-        return isContextSame;
-    }
-
-    @Override
-    public void onUpdateReceived(Update update) {
-        this.runner();
-
-    }
-
-    @Override
-    public String getBotUsername() {
-        // Return bot username
-        // If bot username is @MyAmazingBot, it must return 'MyAmazingBot'
-        return config.getBot()
-                .getBotName();
-    }
-
-    @Override
-    public void onClosing() {
-        try {
-            rcon.close();
-        } catch (IOException ignored) {
-        }
-        exe.shutdown();
     }
 
     public Session getSession(Update update) {
@@ -319,6 +235,38 @@ public class ZomboidBot extends TelegramLongPollingBot {
     public void openSession(Session session) {
         session.setLastActiveTime(LocalDateTime.now());
         sessions.add(session);
+    }
+
+    public void updateSession() {
+        if (sessions == null || sessions.isEmpty()) {
+            openSession(this.currentSession);
+        }
+
+        assert sessions != null;
+        var sessionRow = sessions.stream()
+                .filter(session1 -> session1.getChatId()
+                        .equals(this.currentSession.getChatId()))
+                .findFirst()
+                .orElse(new Session());
+
+        if (sessionRow.getChatId() == null) {
+            openSession(this.currentSession);
+        }
+
+        sessions.remove(sessionRow);
+        this.currentSession.setLastActiveTime(LocalDateTime.now());
+        sessions.add(this.currentSession);
+    }
+
+    private void getStartServerButton(SendMessage.SendMessageBuilder messageBuilder) throws TelegramApiException {
+        var replyKeyboard = ReplyKeyboardMarkup.builder()
+                .keyboard(List.of(new KeyboardRow(
+                        List.of(new KeyboardButton(Command.START.getChatCommand())))))
+                .oneTimeKeyboard(true)
+                .resizeKeyboard(true)
+                .build();
+        messageBuilder.replyMarkup(replyKeyboard);
+        execute(messageBuilder.build());
     }
 
     @SneakyThrows
@@ -349,24 +297,143 @@ public class ZomboidBot extends TelegramLongPollingBot {
         sendMessageWithKeyboard(message, null);
     }
 
-    public void updateSession() {
-        if (sessions == null || sessions.isEmpty()) {
-            openSession(this.currentSession);
+    @SneakyThrows
+    private void runCommand(Command command, Session session) {
+        var messageBuilder = SendMessage.builder()
+                .chatId(chatId);
+
+        // If command level higher than user -> throw back to main menu
+        if (command.getUserGroup() == null || command.getUserGroup()
+                .getGroupLevel() < session.getUser()
+                .getUserGroup()
+                .getGroupLevel()) {
+            messageBuilder.text("You're not allowed to execute this command");
+            execute(messageBuilder.build());
+            if (session.getContext() == null) {
+                new StartMenu(this).getStartMenu();
+            } else {
+                runCommand(session.getContextCommand(), session);
+            }
+            return;
         }
 
-        var sessionRow = sessions.stream()
-                .filter(session1 -> session1.getChatId()
-                        .equals(this.currentSession.getChatId()))
-                .findFirst()
-                .orElse(new Session());
-
-        if (sessionRow.getChatId() == null) {
-            openSession(this.currentSession);
+        switch (command) {
+            case PLAYERS -> startMenu.getPlayers();
+            case SERVER_MESSAGE -> startMenu.getServerMessageForm();
+            case KICK -> playerMenu.kickPlayer(currentSession.getSavedValue());
+            case BAN_USER -> playerMenu.banPlayer(currentSession.getSavedValue());
+            case START -> {
+                if (runBashCommand("./pzserver start")) {
+                    serverStartTime = LocalDateTime.now();
+                    messageBuilder.text("Server has been successfully started, wait a bit for it to load");
+                    sendMessageWithKeyboard(messageBuilder.build(), new KeyboardRow());
+                } else {
+                    messageBuilder.text("Server failed to start, see above message for details");
+                    sendMessageWithKeyboard(messageBuilder.build(), new KeyboardRow());
+                }
+            }
+            case RESTART -> {
+                if (runBashCommand("./pzserver restart")) {
+                    serverStartTime = LocalDateTime.now();
+                    messageBuilder.text("Server has been successfully restarted, wait a bit for it to load");
+                    sendMessageWithKeyboard(messageBuilder.build(), new KeyboardRow());
+                    rcon.close();
+                    rcon = null;
+                } else {
+                    messageBuilder.text("Server failed to restart, see above message for details");
+                    sendMessageWithKeyboard(messageBuilder.build(), new KeyboardRow());
+                }
+            }
+            case STOP -> {
+                if (runBashCommand("./pzserver stop")) {
+                    serverStartTime = LocalDateTime.now();
+                    messageBuilder.text("Server has been successfully stopped");
+                    getStartServerButton(messageBuilder);
+                    rcon.close();
+                    rcon = null;
+                } else {
+                    messageBuilder.text("Server failed to stop, see above message for details");
+                }
+            }
+            default -> {
+                messageBuilder.text("Command %s is not possible to execute".formatted(command))
+                        .chatId(session.getChatId());
+                execute(messageBuilder.build());
+            }
         }
-
-        sessions.remove(sessionRow);
-        this.currentSession.setLastActiveTime(LocalDateTime.now());
-        sessions.add(this.currentSession);
     }
 
+    @SneakyThrows
+    private Boolean runBashCommand(String command) {
+        var processBuilder = new ProcessBuilder("/usr/bin/bash", "-c", command);
+        var env = processBuilder.environment();
+        // env var TMUX/STY should be null, else LinuxGSM throws exception if bot launched from screen/tmux session
+        env.put("TMUX", "");
+        env.put("STY", "");
+        System.out.println(processBuilder.command());
+        var process = processBuilder.start();
+        var messageBuilder = SendMessage.builder()
+                .chatId(chatId);
+        StringBuilder consoleOutput = new StringBuilder("Console output:");
+        messageBuilder.text(consoleOutput.toString());
+        var messageId = execute(messageBuilder.build()).getMessageId();
+        String b;
+        String s;
+        boolean isFailed = false;
+        while ((b = process.inputReader()
+                .readLine()) != null) {
+            s = b;
+            System.out.println(s);
+            if (s.contains("FAIL"))
+                isFailed = true;
+            if (!s.isEmpty()) {
+                // Removing stylized garbage from output to make it look good in the message
+                s = RegExUtils.replacePattern(s, "\033\\[K", "");
+                s = RegExUtils.replacePattern(s, "\\e\\[.?.?m", "");
+                consoleOutput.append("\n")
+                        .append(s);
+                execute(EditMessageText.builder()
+                        .chatId(chatId)
+                        .messageId(messageId)
+                        .text(consoleOutput.toString())
+                        .build());
+            } else
+                consoleOutput.append("/n");
+        }
+        return !isFailed;
+    }
+
+    @SneakyThrows
+    public Boolean checkContext(Context expectedContext) {
+        var isContextSame = !(currentSession.getContext() == null || !currentSession.getContext()
+                .equals(expectedContext));
+        if (!isContextSame) {
+            var messageBuilder = SendMessage.builder();
+            messageBuilder.text("Context did not match");
+            messageBuilder.chatId(chatId);
+            execute(messageBuilder.build());
+        }
+        return isContextSame;
+    }
+
+    @Override
+    public String getBotUsername() {
+        // Return bot username
+        // If bot username is @MyAmazingBot, it must return 'MyAmazingBot'
+        return config.getBot()
+                .getBotName();
+    }
+
+    @Override
+    public void onUpdateReceived(Update update) {
+    }
+
+    @Override
+    public void onClosing() {
+        try {
+            rcon.close();
+        } catch (IOException ignored) {
+        }
+        exe.shutdown();
+    }
 }

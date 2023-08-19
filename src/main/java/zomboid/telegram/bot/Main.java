@@ -17,7 +17,8 @@ public class Main {
             var fileToParse = Path.of(new File(Main.class.getProtectionDomain()
                             .getCodeSource()
                             .getLocation()
-                            .toURI()).getParentFile().getPath(), "ztbot.ini")
+                            .toURI()).getParentFile()
+                            .getPath(), "ztbot.ini")
                     .toFile();
             config = new ModelMapper().map(new Ini(fileToParse), ServerConfigMapper.class);
         } catch (NoSuchFileException e) {
@@ -25,6 +26,6 @@ public class Main {
             throw new RuntimeException("The configuration file have not been initialized");
         }
         var zomboidBot = new ZomboidBot(config);
-            zomboidBot.runner();
+        zomboidBot.runner();
     }
 }
