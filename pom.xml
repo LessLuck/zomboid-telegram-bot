@@ -6,7 +6,7 @@
 
     <groupId>zd.tel.bot</groupId>
     <artifactId>zomboid-telegram-bot</artifactId>
-    <version>0.3</version>
+    <version>1.0</version>
 
     <properties>
         <maven.compiler.source>17</maven.compiler.source>
@@ -62,9 +62,6 @@
                     </execution>
                 </executions>
                 <configuration>
-                    <descriptorRefs>
-                        <descriptorRef>jar-with-dependencies</descriptorRef>
-                    </descriptorRefs>
                     <archive>
                         <manifest>
                             <addClasspath>true</addClasspath>
@@ -72,6 +69,10 @@
                             <mainClass>zomboid.telegram.bot.Main</mainClass>
                         </manifest>
                     </archive>
+                    <descriptorRefs>
+                        <descriptorRef>jar-with-dependencies</descriptorRef>
+                    </descriptorRefs>
+                    <appendAssemblyId>false</appendAssemblyId>
                 </configuration>
             </plugin>
         </plugins>
