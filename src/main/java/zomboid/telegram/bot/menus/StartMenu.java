@@ -14,12 +14,14 @@ import java.util.List;
 
 public class StartMenu {
     public static final List<KeyboardRow> startMenuButtons = List.of(new KeyboardRow(
-            List.of(new KeyboardButton(Command.PLAYERS.getChatCommand()),
-                    new KeyboardButton(Command.SERVER_MESSAGE.getChatCommand()))),
+                    List.of(new KeyboardButton(Command.PLAYERS.getChatCommand()),
+                            new KeyboardButton(Command.SERVER_MESSAGE.getChatCommand()))),
             new KeyboardRow(List.of(
                     new KeyboardButton(Command.START.getChatCommand()),
                     new KeyboardButton(Command.RESTART.getChatCommand()),
-                    new KeyboardButton(Command.STOP.getChatCommand()))));
+                    new KeyboardButton(Command.STOP.getChatCommand()))),
+            new KeyboardRow(List.of(
+                    new KeyboardButton(Command.EXECUTE.getChatCommand()))));
 
     private final ZomboidBot bot;
 
@@ -78,8 +80,23 @@ public class StartMenu {
         bot.updateSession();
     }
 
+    @SneakyThrows
+    public void getExecuteForm() {
+        var messageBuilder = SendMessage.builder();
+        messageBuilder.chatId(bot.chatId);
+        messageBuilder.text("Enter the command to be executed on the server");
+        var message = messageBuilder.build();
+        bot.sendMessageRemoveKeyboard(message);
+        bot.currentSession.setContext(Context.EXECUTE);
+        bot.updateSession();
+    }
+
     public void sendServerMessage(String message) {
         var command = "servermsg \"%s\"".formatted(message);
+        bot.sendRconCommandAndGoToMenu(command);
+    }
+
+    public void sendExecuteCommand(String command) {
         bot.sendRconCommandAndGoToMenu(command);
     }
 }
