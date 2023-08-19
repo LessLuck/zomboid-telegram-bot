@@ -1,0 +1,9 @@
+## List of Telegram users and their roles.
+## If Telegram user's name is "@Admin" - then username here should be "Admin"
+## Available roles:
+## - GM(Teleporting/Banning/Kicking players)
+## - ADMIN(Same as GM plus: Sending server messages, starting/restarting/stopping server)
+##
+## Example:
+## Admin=ADMIN
+## Moderator=MOD

@@ -15,7 +15,8 @@ import java.util.List;
 public class StartMenu {
     public static final List<KeyboardRow> startMenuButtons = List.of(new KeyboardRow(
             List.of(new KeyboardButton(Command.PLAYERS.getChatCommand()),
-                    new KeyboardButton(Command.SERVER_MESSAGE.getChatCommand()),
+                    new KeyboardButton(Command.SERVER_MESSAGE.getChatCommand()))),
+            new KeyboardRow(List.of(
                     new KeyboardButton(Command.START.getChatCommand()),
                     new KeyboardButton(Command.RESTART.getChatCommand()),
                     new KeyboardButton(Command.STOP.getChatCommand()))));

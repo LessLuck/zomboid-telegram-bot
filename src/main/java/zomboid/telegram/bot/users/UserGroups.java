@@ -8,7 +8,7 @@ import lombok.Getter;
 @Getter
 public enum UserGroups {
     ADMIN(1),
-    GM(2);
+    MOD(2);
 
     private final Integer groupLevel;
 }
