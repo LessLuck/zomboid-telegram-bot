@@ -325,7 +325,7 @@ public class ZomboidBot extends TelegramLongPollingBot {
             case START -> {
                 if (runBashCommand("./pzserver start")) {
                     serverStartTime = LocalDateTime.now();
-                    messageBuilder.text("Server has been successfully started, wait a bit for it to load");
+                    messageBuilder.text("Server have been successfully started, wait a bit for it to load");
                     sendMessageWithKeyboard(messageBuilder.build(), new KeyboardRow());
                 } else {
                     messageBuilder.text("Server failed to start, see above message for details");
@@ -398,7 +398,7 @@ public class ZomboidBot extends TelegramLongPollingBot {
                         .text(consoleOutput.toString())
                         .build());
             } else
-                consoleOutput.append("/n");
+                consoleOutput.append("\n");
         }
         return !isFailed;
     }
