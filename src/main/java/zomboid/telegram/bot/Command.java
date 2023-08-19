@@ -15,7 +15,7 @@ public enum Command {
     RESTART(UserGroups.ADMIN, "Restart", null),
     STOP(UserGroups.ADMIN, "Stop", null),
     SERVER_MESSAGE(UserGroups.ADMIN, "Server message", null),
-    EXECUTE(UserGroups.ADMIN, "Execute", null),
+    EXECUTE(UserGroups.ADMIN, "Execute custom console command", null),
     SAVE(UserGroups.ADMIN, "Save", null),
     BAN_USER(UserGroups.MOD, "Ban user", Context.PLAYER),
     TELEPORT(UserGroups.MOD, "Teleport", Context.PLAYER),

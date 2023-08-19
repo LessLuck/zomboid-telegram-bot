@@ -15,6 +15,7 @@ import org.telegram.telegrambots.meta.api.objects.replykeyboard.ReplyKeyboardRem
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardButton;
 import org.telegram.telegrambots.meta.api.objects.replykeyboard.buttons.KeyboardRow;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
+import org.telegram.telegrambots.meta.exceptions.TelegramApiRequestException;
 import zomboid.telegram.bot.menus.PlayerMenu;
 import zomboid.telegram.bot.menus.StartMenu;
 import zomboid.telegram.bot.users.User;
@@ -65,11 +66,15 @@ public class ZomboidBot extends TelegramLongPollingBot {
                     updates.forEach(this::processMessage);
                 }
                 updates.clear();
+            } catch (TelegramApiRequestException e) {
+                System.out.println("\n" + e.getMessage() + "\n");
+                return;
             } catch (Exception e) {
                 var stackTrace = e.getStackTrace();
                 System.out.println(e.getMessage());
-                System.out.println(e.getCause()
-                        .toString());
+                if (e.getCause() != null)
+                    System.out.println(e.getCause()
+                            .toString());
                 Arrays.stream(stackTrace)
                         .forEach(stack -> System.out.println(stack.toString()));
                 System.out.println();
@@ -121,7 +126,7 @@ public class ZomboidBot extends TelegramLongPollingBot {
             }
             // If command is not start and can't connect to server - send message that server is offline
             catch (IOException e) {
-                if (serverStartTime.isAfter(LocalDateTime.now()
+                if (serverStartTime != null && serverStartTime.isAfter(LocalDateTime.now()
                         .minusMinutes(5))) {
                     messageBuilder.text("""
                             Server have been recently restarted/started.
@@ -129,7 +134,7 @@ public class ZomboidBot extends TelegramLongPollingBot {
                             Check server logs if you think something is wrong with it.""");
                     sendMessageWithMenuKeyboard(messageBuilder.build());
                     return;
-                } else if (serverStartTime.isBefore(LocalDateTime.now()
+                } else if (serverStartTime != null && serverStartTime.isBefore(LocalDateTime.now()
                         .minusMinutes(5))) {
                     messageBuilder.text("""
                             Server have been restarted/started %s minutes ago and still haven't loaded.
@@ -139,6 +144,7 @@ public class ZomboidBot extends TelegramLongPollingBot {
                     serverStartTime = null;
                     return;
                 }
+
                 if (command != Command.START) {
                     messageBuilder.text("Server is currently offline");
                     getStartServerButton(messageBuilder);
@@ -158,6 +164,7 @@ public class ZomboidBot extends TelegramLongPollingBot {
             if (currentSession.getContext() != null) {
                 switch (currentSession.getContext()) {
                     case SERVER_MESSAGE -> new StartMenu(this).sendServerMessage(message_text);
+                    case EXECUTE -> new StartMenu(this).sendExecuteCommand(message_text);
                     case PLAYERS -> new PlayerMenu(this).getPlayerMenu(message_text);
                     case PLAYER -> {
                         if (command != null && command.equals(Command.TELEPORT)) {
@@ -336,6 +343,7 @@ public class ZomboidBot extends TelegramLongPollingBot {
         switch (command) {
             case PLAYERS -> startMenu.getPlayers();
             case SERVER_MESSAGE -> startMenu.getServerMessageForm();
+            case EXECUTE -> startMenu.getExecuteForm();
             case KICK -> playerMenu.kickPlayer(currentSession.getSavedValue());
             case BAN_USER -> playerMenu.banPlayer(currentSession.getSavedValue());
             case START -> {

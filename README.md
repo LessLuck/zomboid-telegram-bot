@@ -6,6 +6,7 @@ Zomboid server management telegram bot is a Java executable bot, which is able t
 - Ban player
 - Teleport player to another player
 - Send server messages
+- Send custom console command
 - LinuxGSM features only:
   - Start server
   - Stop server
@@ -22,13 +23,13 @@ Instructions on how to create a telegram bot can be found [here](https://core.te
 ### LinuxGSM server
 Put the jar file in the parent folder of the "pzserver" file, then run the bot using the following command:
 ```
-java -jar zomboid-telegram-bot-1.0.jar
+java -jar zomboid-telegram-bot-1.1.0.jar
 ```
 
 ### Other server
 Put the jar in any location, then run the bot using the following command:
 ```
-java -jar zomboid-telegram-bot-1.0.jar
+java -jar zomboid-telegram-bot-1.1.0.jar
 ```
 
 ## How to use
