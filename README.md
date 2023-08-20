@@ -1,5 +1,16 @@
-# zomboid-telegram-bot
-Zomboid server management telegram bot is a Java executable bot, which is able to simultaneously interact with multiple clients with different permissions and perform different commands.
+# Zomboid server management telegram bot
+This bot was made for easy to setup project zomboid server management. It's a Java executable program, which is able to simultaneously interact with multiple users with different permissions and perform different commands.
+
+## Contents
+- [Features](#features)
+- [Requirements](#requirements)
+- [Installation guide](#installation-guide)
+  - [How to create a telegram bot](#how-to-create-a-telegram-bot)
+  - [LinuxGSM server](#linuxgsm-server)
+  - [Other server](#other-server)
+- [How to use](#how-to-use)
+- [Example of bot usage](#example-of-bot-usage)
+  - [Server restart](#server-restart)
 
 ## Features
 - Kick player
