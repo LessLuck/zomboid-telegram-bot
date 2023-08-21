@@ -9,7 +9,7 @@ A telegram bot for project zomboid, which was made for easy to setup server mana
   - [LinuxGSM server](#linuxgsm-server)
   - [Other server](#other-server)
 - [How to use](#how-to-use)
-- [Examples of bot usage](#example-of-bot-usage)
+- [Examples of bot usage](#examples-of-bot-usage)
 
 ## Features
 - Kick player

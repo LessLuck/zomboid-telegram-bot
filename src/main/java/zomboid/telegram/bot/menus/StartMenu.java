@@ -58,8 +58,7 @@ public class StartMenu {
             messageBuilder.text("Number of connected players: (%s)".formatted(players.size()));
             var message = messageBuilder.build();
             var playersListKeyboard = new PlayersList(players).getPlayersKeyboard();
-            bot.sendMessageWithKeyboard(message, playersListKeyboard);
-//            bot.writeToCache(Command.PLAYERS, message);
+            bot.sendMessageWithKeyboard(message, playersListKeyboard, "Choose a player form the list");
             bot.updateSession();
         } else {
             messageBuilder.text("There are no connected players, going back to main menu");

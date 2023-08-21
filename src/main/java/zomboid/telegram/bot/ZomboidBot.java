@@ -167,13 +167,17 @@ public class ZomboidBot extends TelegramLongPollingBot {
                     case EXECUTE -> new StartMenu(this).sendExecuteCommand(message_text);
                     case PLAYERS -> new PlayerMenu(this).getPlayerMenu(message_text);
                     case PLAYER -> {
-                        if (command != null && command.equals(Command.TELEPORT)) {
-                            new PlayerMenu(this).getTeleportForm();
+                        if (command != null) {
+                            switch (command) {
+                                case TELEPORT -> new PlayerMenu(this).getTeleportForm();
+                                case KICK -> playerMenu.kickPlayer(currentSession.getSavedValue());
+                                case BAN_USER -> playerMenu.banPlayer(currentSession.getSavedValue());
+                            }
                         } else {
                             messageBuilder.text(
-                                    "Entered command is not recognized, going back to main menu");
+                                    "Entered command is not recognized");
                             execute(messageBuilder.build());
-                            new StartMenu(this).getStartMenu();
+                            new PlayerMenu(this).getPlayerMenu(currentSession.getSavedValue());
                         }
                     }
                     case TELEPORT -> new PlayerMenu(this).teleportPlayer(message_text);
@@ -288,7 +292,8 @@ public class ZomboidBot extends TelegramLongPollingBot {
     }
 
     @SneakyThrows
-    public void sendMessageWithKeyboard(SendMessage message, @Nullable KeyboardRow keyboardRow) {
+    public void sendMessageWithKeyboard(SendMessage message, @Nullable KeyboardRow keyboardRow,
+                                        @Nullable String fieldPlaceholder) {
         var menuRow = new KeyboardRow();
         menuRow.add(Command.MENU.getChatCommand());
         ReplyKeyboard replyKeyboard;
@@ -296,6 +301,7 @@ public class ZomboidBot extends TelegramLongPollingBot {
         if (keyboardRow != null) {
             var keyboardRows = List.of(keyboardRow, menuRow);
             replyKeyboard = ReplyKeyboardMarkup.builder()
+                    .inputFieldPlaceholder(fieldPlaceholder)
                     .keyboard(keyboardRows)
                     .oneTimeKeyboard(true)
                     .isPersistent(true)
@@ -312,12 +318,12 @@ public class ZomboidBot extends TelegramLongPollingBot {
 
     @SneakyThrows
     public void sendMessageRemoveKeyboard(SendMessage message) {
-        sendMessageWithKeyboard(message, null);
+        sendMessageWithKeyboard(message, null, null);
     }
 
     @SneakyThrows
     public void sendMessageWithMenuKeyboard(SendMessage message) {
-        sendMessageWithKeyboard(message, new KeyboardRow());
+        sendMessageWithKeyboard(message, new KeyboardRow(), null);
     }
 
     @SneakyThrows
@@ -344,8 +350,6 @@ public class ZomboidBot extends TelegramLongPollingBot {
             case PLAYERS -> startMenu.getPlayers();
             case SERVER_MESSAGE -> startMenu.getServerMessageForm();
             case EXECUTE -> startMenu.getExecuteForm();
-            case KICK -> playerMenu.kickPlayer(currentSession.getSavedValue());
-            case BAN_USER -> playerMenu.banPlayer(currentSession.getSavedValue());
             case START -> {
                 if (checkBashAvailable())
                     if (runBashCommand("./pzserver start")) {
