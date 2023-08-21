@@ -1,5 +1,5 @@
 # Zomboid server management telegram bot
-This bot was made for easy to setup project zomboid server management. It's a Java executable program, which is able to simultaneously interact with multiple users with different permissions and perform different commands.
+A telegram bot for project zomboid, which was made for easy to setup server management. It's a Java executable program, which is able to simultaneously interact with multiple users with different permissions and execute different commands.
 
 ## Contents
 - [Features](#features)
@@ -72,10 +72,25 @@ Resulting zbot_users.txt file should look like this where Admin is @Admin userna
 Admin=ADMIN
 Moderator=MOD
 ```
-## Example of bot usage
-### Server restart
+## Examples of bot usage
+<details><summary>Player Kick</summary>
+
+#### Getting the players list
+![image](https://github.com/LessLuck/zomboid-telegram-bot/assets/16764015/69e554b7-5be0-446d-abf0-c85f5d0756ac)
+
+___
+![image](https://github.com/LessLuck/zomboid-telegram-bot/assets/16764015/8f8ad37b-9e4c-44be-9b63-d8c2d52fc249)
+#### Choosing a player
+![image](https://github.com/LessLuck/zomboid-telegram-bot/assets/16764015/f10c699c-0e80-41a5-a2a6-8e547a6a6e13)
+#### Kicking a player
+![image](https://github.com/LessLuck/zomboid-telegram-bot/assets/16764015/e2c5042f-bd61-4e4e-9d53-d53d0051e599)
+</details>
+
+<details><summary>Server restart</summary>
+  
 #### Picking a server restart option
 ![image](https://github.com/LessLuck/zomboid-telegram-bot/assets/16764015/3045d650-26d4-4a4a-9822-e26cb38bd671)
 
 #### Server restarting
 ![image](https://github.com/LessLuck/zomboid-telegram-bot/assets/16764015/27b32170-fe18-48aa-9007-2ee4185c1f0e)
+</details>
