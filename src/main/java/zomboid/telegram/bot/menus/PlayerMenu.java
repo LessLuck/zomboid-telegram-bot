@@ -33,7 +33,7 @@ public class PlayerMenu {
         messageBuilder.text("Pick an action from the list")
                 .chatId(bot.chatId);
         var message = messageBuilder.build();
-        bot.sendMessageWithKeyboard(message, playerMenuButtons);
+        bot.sendMessageWithKeyboard(message, playerMenuButtons, "Pick an action from the list");
         bot.updateSession();
     }
 
@@ -77,7 +77,7 @@ public class PlayerMenu {
             messageBuilder.text("Choose the player to teleport to:");
             var message = messageBuilder.build();
             var playersListKeyboard = new PlayersList(players).getPlayersKeyboard();
-            bot.sendMessageWithKeyboard(message, playersListKeyboard);
+            bot.sendMessageWithKeyboard(message, playersListKeyboard, "Choose the player to teleport to");
             bot.updateSession();
         } else {
             messageBuilder.text("There are no other connected players, going back to player menu");
