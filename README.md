@@ -10,7 +10,6 @@ A telegram bot for project zomboid, which was made for easy to setup server mana
   - [Other server](#other-server)
 - [How to use](#how-to-use)
 - [Example of bot usage](#example-of-bot-usage)
-  - [Server restart](#server-restart)
 
 ## Features
 - Kick player
