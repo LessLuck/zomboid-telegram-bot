@@ -18,14 +18,14 @@ This bot was made for easy to setup project zomboid server management. It's a Ja
 - Teleport player to another player
 - Send server messages
 - Send custom console command
-- LinuxGSM features only:
+- [LinuxGSM](https://linuxgsm.com/servers/pzserver/) features only:
   - Start server
   - Stop server
   - Restart server
 
 ## Requirements
 - JDK version 17 or higher
-- (Optional) Zomboid server hosted using LinuxGSM (Adds features such as starting/stopping the server)
+- (Optional) Zomboid server hosted using [LinuxGSM](https://linuxgsm.com/servers/pzserver/) (Adds features such as starting/stopping the server)
 
 ## Installation guide
 ### How to create a telegram bot
@@ -65,7 +65,7 @@ In zbot_users.txt insert the telegram users usernames and user group which you w
 
 Possible user groups:
 - MOD (Teleporting/kicking/banning players)
-- ADMIN (Same as MOD + Starting/stopping server/sending server message)
+- ADMIN (Same as MOD + Starting/stopping server/sending server message/executing custom console commands)
 
 Resulting zbot_users.txt file should look like this where Admin is @Admin username in Telegram:
 ```
